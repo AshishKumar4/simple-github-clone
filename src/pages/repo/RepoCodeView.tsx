@@ -78,20 +78,18 @@ export function RepoCodeView() {
           <Breadcrumb>
             <BreadcrumbList>
               {breadcrumbItems.map((item, index) => (
-                // Use a React Fragment with a key if multiple elements need to be returned for one item,
-                // but in this case, BreadcrumbItem can directly hold the key.
-                <div key={item.path} className="flex items-center"> {/* Wrapping div to hold key for the pair of elements */}
+                <React.Fragment key={item.path}>
                   <BreadcrumbItem>
                     {index === breadcrumbItems.length - 1 ? (
                       <BreadcrumbPage>{item.name}</BreadcrumbPage>
                     ) : (
                       <BreadcrumbLink asChild>
-                        <a href="#" onClick={(e) => { e.preventDefault(); navigateTo(item.path); }}>{item.name}</a>
+                        <Link to="#" onClick={(e) => { e.preventDefault(); navigateTo(item.path); }}>{item.name}</Link>
                       </BreadcrumbLink>
                     )}
                   </BreadcrumbItem>
                   {index < breadcrumbItems.length - 1 && <BreadcrumbSeparator />}
-                </div>
+                </React.Fragment>
               ))}
             </BreadcrumbList>
           </Breadcrumb>
@@ -107,11 +105,11 @@ export function RepoCodeView() {
               {contents.map(item => (
                 <div key={item.path} className="flex items-center space-x-4 p-2 border-b last:border-b-0">
                   {item.type === 'dir' ? <Folder className="h-5 w-5 text-blue-500" /> : <File className="h-5 w-5 text-muted-foreground" />}
-                  <button // Use a button instead of an anchor for click events when navigating internally
+                  <button
                     onClick={() => {
                       item.type === 'dir' ? navigateTo(item.path) : viewFile(item);
                     }}
-                    className="text-sm hover:underline hover:text-blue-500 flex-1 text-left" // Added text-left for consistent alignment
+                    className="text-sm hover:underline hover:text-blue-500 flex-1 text-left"
                   >
                     {item.name}
                   </button>

@@ -39,10 +39,10 @@ export interface PullRequest {
   createdAt: string;
   updatedAt: string;
   branch: string;
-  body: string; // Added for pull request description
-  comments: Comment[]; // Added for pull request comments
-  labels: Label[]; // Added for labels
-  assignees: User[]; // Added for assignees
+  body: string;
+  comments: Comment[];
+  labels: Label[];
+  assignees: User[];
 }
 export interface FileNode {
   type: 'file' | 'dir';

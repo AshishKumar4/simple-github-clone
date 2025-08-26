@@ -1,6 +1,6 @@
 import { enableMapSet } from "immer";
 enableMapSet();
-import { StrictMode } from 'react'
+import React, { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { App } from './App.tsx'
@@ -15,6 +15,8 @@ import { RepoIssuesView } from './pages/repo/RepoIssuesView';
 import { RepoPullsView } from './pages/repo/RepoPullsView';
 import { IssueDetailPage } from './pages/IssueDetailPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
     path: "/",
@@ -23,8 +25,8 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <DashboardPage /> },
       { path: "new", element: <NewRepoPage /> },
-      { 
-        path: "/:user/:repo", 
+      {
+        path: "/:user/:repo",
         element: <RepoPageLayout />,
         children: [
           { index: true, element: <RepoCodeView /> },
@@ -41,7 +43,9 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <RouterProvider router={router} />
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
     </ErrorBoundary>
   </StrictMode>,
 )

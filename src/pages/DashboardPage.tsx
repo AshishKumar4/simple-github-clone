@@ -6,9 +6,15 @@ import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/store/auth';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
+import { useRepositories } from '@/hooks/use-repo-data';
+import { Skeleton } from '@/components/ui/skeleton';
 export function DashboardPage() {
-  const { currentUser, repositories } = useAuthStore();
-  const userRepos = repositories.filter(repo => repo.owner.id === currentUser?.id);
+  const { currentUser } = useAuthStore();
+  const { data: repositories, isLoading, isError } = useRepositories();
+  const userRepos = repositories?.filter(repo => repo.owner.id === currentUser?.id) || [];
+  if (isError) {
+    return <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-destructive">Error loading repositories.</div>;
+  }
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -24,17 +30,28 @@ export function DashboardPage() {
           </div>
           <Input placeholder="Find a repository..." />
           <ul className="space-y-2">
-            {userRepos.map(repo => (
-              <li key={repo.id}>
-                <Link to={`/${repo.owner.username}/${repo.name}`} className="flex items-center space-x-3 text-sm hover:underline">
-                  <Avatar className="h-6 w-6">
-                    <AvatarImage src={repo.owner.avatarUrl} />
-                    <AvatarFallback>{repo.owner.username.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <span>{repo.owner.username} / <strong>{repo.name}</strong></span>
-                </Link>
-              </li>
-            ))}
+            {isLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <li key={i} className="flex items-center space-x-3">
+                  <Skeleton className="h-6 w-6 rounded-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                </li>
+              ))
+            ) : userRepos.length > 0 ? (
+              userRepos.map(repo => (
+                <li key={repo.id}>
+                  <Link to={`/${repo.owner.username}/${repo.name}`} className="flex items-center space-x-3 text-sm hover:underline">
+                    <Avatar className="h-6 w-6">
+                      <AvatarImage src={repo.owner.avatarUrl} />
+                      <AvatarFallback>{repo.owner.username.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span>{repo.owner.username} / <strong>{repo.name}</strong></span>
+                  </Link>
+                </li>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">No repositories found.</p>
+            )}
           </ul>
         </aside>
         <main className="lg:col-span-3">
@@ -44,7 +61,17 @@ export function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {repositories.slice(0, 5).map(repo => (
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex items-start space-x-4 p-4 border-b last:border-b-0">
+                      <Skeleton className="h-5 w-5 mt-1" />
+                      <div className="flex-1 space-y-1">
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-3 w-1/3" />
+                      </div>
+                    </div>
+                  ))
+                ) : (repositories?.slice(0, 5).map(repo => (
                   <div key={repo.id} className="flex items-start space-x-4 p-4 border-b last:border-b-0">
                     <Book className="h-5 w-5 text-muted-foreground mt-1" />
                     <div className="flex-1">
@@ -57,9 +84,14 @@ export function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                ))}
+                )))}
               </div>
-              <p className="text-center text-sm text-muted-foreground mt-6">You've reached the end of the feed.</p>
+              {!isLoading && (!repositories || repositories.length === 0) && (
+                <p className="text-center text-sm text-muted-foreground mt-6">No recent activity.</p>
+              )}
+              {!isLoading && repositories && repositories.length > 0 && (
+                <p className="text-center text-sm text-muted-foreground mt-6">You've reached the end of the feed.</p>
+              )}
             </CardContent>
           </Card>
         </main>

@@ -72,8 +72,8 @@ export const mockRepositories: Repository[] = [
       },
     ],
     pullRequests: [
-      { id: 'pr-1', number: 4, title: 'Feat: Add user profile page', user: alan, state: 'open', createdAt: subDays(new Date(), 1).toISOString(), updatedAt: subHours(new Date(), 1).toISOString(), branch: 'feature/profile-page' },
-      { id: 'pr-2', number: 5, title: 'Fix: Responsive layout issues', user: grace, state: 'merged', createdAt: subDays(new Date(), 3).toISOString(), updatedAt: subDays(new Date(), 2).toISOString(), branch: 'fix/responsive' },
+      { id: 'pr-1', number: 4, title: 'Feat: Add user profile page', user: alan, state: 'open', createdAt: subDays(new Date(), 1).toISOString(), updatedAt: subHours(new Date(), 1).toISOString(), branch: 'feature/profile-page', body: 'This PR adds a new profile page for users.', comments: [], labels: [], assignees: [alan] },
+      { id: 'pr-2', number: 5, title: 'Fix: Responsive layout issues', user: grace, state: 'merged', createdAt: subDays(new Date(), 3).toISOString(), updatedAt: subDays(new Date(), 2).toISOString(), branch: 'fix/responsive', body: 'Fixes various layout issues on smaller screens.', comments: [], labels: [], assignees: [] },
     ],
     files: vertexFiles,
   },

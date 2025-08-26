@@ -1,14 +1,28 @@
 import { Outlet, useParams, NavLink, Link } from 'react-router-dom';
 import { Book, Code, GitPullRequest, AlertCircle, Star, GitFork, Eye } from 'lucide-react';
-import { useAuthStore } from '@/store/auth';
 import { NotFoundPage } from '../NotFoundPage';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { useRepository } from '@/hooks/use-repo-data';
+import { Skeleton } from '@/components/ui/skeleton';
+import React from 'react';
 export function RepoPageLayout() {
   const { user, repo: repoName } = useParams<{ user: string; repo: string }>();
-  const { repositories } = useAuthStore();
-  const repo = repositories.find(r => r.owner.username === user && r.name === repoName);
-  if (!repo) {
+  const { data: repo, isLoading, isError } = useRepository(user!, repoName!);
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <Skeleton className="h-8 w-1/2" />
+        <div className="flex space-x-4">
+          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-8 w-24" />
+        </div>
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+  if (isError || !repo) {
     return <NotFoundPage />;
   }
   const navItems = [

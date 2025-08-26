@@ -9,6 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Book, Lock } from 'lucide-react';
+import { useCreateRepository } from '@/hooks/use-repo-data';
+import { toast } from 'sonner';
 const newRepoSchema = z.object({
   name: z.string().min(1, 'Repository name is required').max(100),
   description: z.string().max(300).optional(),
@@ -17,7 +19,8 @@ const newRepoSchema = z.object({
 type NewRepoFormValues = z.infer<typeof newRepoSchema>;
 export function NewRepoPage() {
   const navigate = useNavigate();
-  const { currentUser, addRepository } = useAuthStore();
+  const { currentUser } = useAuthStore();
+  const createRepositoryMutation = useCreateRepository();
   const form = useForm<NewRepoFormValues>({
     resolver: zodResolver(newRepoSchema),
     defaultValues: {
@@ -26,9 +29,21 @@ export function NewRepoPage() {
       isPrivate: false,
     },
   });
-  const onSubmit = (data: NewRepoFormValues) => {
-    addRepository(data);
-    navigate(`/${currentUser?.username}/${data.name}`);
+  const onSubmit = async (data: NewRepoFormValues) => {
+    if (!currentUser) {
+      toast.error('You must be logged in to create a repository.');
+      return;
+    }
+    createRepositoryMutation.mutate({
+      name: data.name,
+      description: data.description,
+      isPrivate: data.isPrivate,
+      ownerId: currentUser.id,
+    }, {
+      onSuccess: (newRepo) => {
+        navigate(`/${newRepo.owner.username}/${newRepo.name}`);
+      }
+    });
   };
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -98,7 +113,9 @@ export function NewRepoPage() {
               </FormItem>
             )}
           />
-          <Button type="submit">Create repository</Button>
+          <Button type="submit" disabled={createRepositoryMutation.isPending}>
+            {createRepositoryMutation.isPending ? 'Creating...' : 'Create repository'}
+          </Button>
         </form>
       </Form>
     </div>

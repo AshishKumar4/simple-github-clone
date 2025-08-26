@@ -1,34 +1,44 @@
 import { Hono } from "hono";
 import { Env } from './core-utils';
-
+import { CreateRepositoryPayload, RepositoryResponse, ListRepositoriesResponse } from './types';
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
-    // Add more routes like this. **DO NOT MODIFY CORS OR OVERRIDE ERROR HANDLERS**
-    app.get('/api/test', (c) => c.json({ success: true, data: { name: 'this works' }}));
-
-    // Example apis of a counter using durable object
-    app.get('/api/counter', async (c) => {
-        const durableObject = c.env.GlobalDurableObject.get(c.env.GlobalDurableObject.idFromName("global"));
-        return c.json({ success: true, data: await durableObject.getCounterValue() });
+    // Repository API routes
+    app.get('/api/repos', async (c) => {
+        try {
+            const durableObject = c.env.GlobalDurableObject.get(c.env.GlobalDurableObject.idFromName("global"));
+            const repos = await durableObject.getRepositories();
+            return c.json({ success: true, data: repos });
+        } catch (error: any) {
+            return c.json({ success: false, error: error.message || "Failed to list repositories" }, 500);
+        }
     });
-    app.post('/api/counter/increment', async (c) => {
-        const durableObject = c.env.GlobalDurableObject.get(c.env.GlobalDurableObject.idFromName("global"));
-        return c.json({ success: true, data: await durableObject.increment() });
+    app.post('/api/repos', async (c) => {
+        try {
+            const payload: CreateRepositoryPayload = await c.req.json();
+            if (!payload.name || !payload.ownerId) {
+                return c.json({ success: false, error: "Repository name and owner ID are required" }, 400);
+            }
+            const durableObject = c.env.GlobalDurableObject.get(c.env.GlobalDurableObject.idFromName("global"));
+            const newRepo = await durableObject.createRepository(payload);
+            return c.json({ success: true, data: newRepo });
+        } catch (error: any) {
+            return c.json({ success: false, error: error.message || "Failed to create repository" }, 500);
+        }
     });
-    app.post('/api/counter/decrement', async (c) => {
-        const durableObject = c.env.GlobalDurableObject.get(c.env.GlobalDurableObject.idFromName("global"));
-        return c.json({ success: true, data: await durableObject.decrement() });
+    app.get('/api/repos/:owner/:repoName', async (c) => {
+        try {
+            const { owner, repoName } = c.req.param();
+            if (!owner || !repoName) {
+                return c.json({ success: false, error: "Owner and repository name are required" }, 400);
+            }
+            const durableObject = c.env.GlobalDurableObject.get(c.env.GlobalDurableObject.idFromName("global"));
+            const repo = await durableObject.getRepository(owner, repoName);
+            if (!repo) {
+                return c.json({ success: false, error: "Repository not found" }, 404);
+            }
+            return c.json({ success: true, data: repo });
+        } catch (error: any) {
+            return c.json({ success: false, error: error.message || "Failed to get repository" }, 500);
+        }
     });
-
-    // Example apis of using KV store
-    app.get('/api/kv', async (c) => {
-        const value = await c.env.KVStore.get("user_data");
-        return c.json({ success: true, data: value });
-    }); 
-    app.post('/api/kv', async (c) => {
-        // Get user data from request body
-        const userData = await c.req.json();
-        // Store user data in KV
-        await c.env.KVStore.put("user_data", JSON.stringify(userData));
-        return c.json({ success: true });
-    }); 
 }
