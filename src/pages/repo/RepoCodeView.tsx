@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { Repository, FileNode } from '@/lib/types';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -13,13 +13,9 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-// A simple syntax highlighter component (mock)
-const SyntaxHighlighter = ({ children }: { children: React.ReactNode }) => (
-  <pre className="bg-muted p-4 rounded-md overflow-x-auto text-sm">
-    <code>{children}</code>
-  </pre>
-);
+} from "@/components/ui/breadcrumb";
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 export function RepoCodeView() {
   const { repo } = useOutletContext<{ repo: Repository }>();
   const [currentPath, setCurrentPath] = useState('');
@@ -41,6 +37,8 @@ export function RepoCodeView() {
       if (next && next.type === 'dir') {
         contents = next.children || [];
       } else {
+        // This part of the path does not lead to a directory, so we stop.
+        // This can happen if the path points to a file.
         return [];
       }
     }
@@ -84,7 +82,7 @@ export function RepoCodeView() {
                       <BreadcrumbPage>{item.name}</BreadcrumbPage>
                     ) : (
                       <BreadcrumbLink asChild>
-                        <Link to="#" onClick={(e) => { e.preventDefault(); navigateTo(item.path); }}>{item.name}</Link>
+                        <a href="#" onClick={(e) => { e.preventDefault(); navigateTo(item.path); }}>{item.name}</a>
                       </BreadcrumbLink>
                     )}
                   </BreadcrumbItem>
@@ -98,7 +96,9 @@ export function RepoCodeView() {
           {selectedFile ? (
             <div>
               <h3 className="text-lg font-semibold mb-4">{selectedFile.name}</h3>
-              <SyntaxHighlighter>{selectedFile.content}</SyntaxHighlighter>
+              <SyntaxHighlighter language="typescript" style={vscDarkPlus} showLineNumbers>
+                {selectedFile.content || ''}
+              </SyntaxHighlighter>
             </div>
           ) : (
             <div className="border rounded-md">
@@ -107,7 +107,11 @@ export function RepoCodeView() {
                   {item.type === 'dir' ? <Folder className="h-5 w-5 text-blue-500" /> : <File className="h-5 w-5 text-muted-foreground" />}
                   <button
                     onClick={() => {
-                      item.type === 'dir' ? navigateTo(item.path) : viewFile(item);
+                      if (item.type === 'dir') {
+                        navigateTo(item.path);
+                      } else {
+                        viewFile(item);
+                      }
                     }}
                     className="text-sm hover:underline hover:text-blue-500 flex-1 text-left"
                   >

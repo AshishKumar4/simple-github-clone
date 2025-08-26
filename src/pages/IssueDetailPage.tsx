@@ -1,5 +1,4 @@
 import { useParams, Link } from 'react-router-dom';
-import { useAuthStore } from '@/store/auth';
 import { NotFoundPage } from './NotFoundPage';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -9,18 +8,31 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-// Mock Markdown Preview
-const MarkdownPreview = ({ source }: { source: string }) => (
-    <div className="prose dark:prose-invert max-w-none">
-        <pre className="whitespace-pre-wrap font-sans">{source}</pre>
-    </div>
-);
+import { useIssue } from '@/hooks/use-issue-data';
+import { Skeleton } from '@/components/ui/skeleton';
+import MarkdownPreview from '@uiw/react-markdown-preview';
 export function IssueDetailPage() {
   const { user, repo: repoName, issueId } = useParams<{ user: string; repo: string; issueId: string }>();
-  const { repositories } = useAuthStore();
-  const repo = repositories.find(r => r.owner.username === user && r.name === repoName);
-  const issue = repo?.issues.find(i => i.number.toString() === issueId);
-  if (!repo || !issue) {
+  const { data: issue, isLoading, isError } = useIssue(user!, repoName!, parseInt(issueId!));
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4">
+        <Skeleton className="h-10 w-3/4" />
+        <Skeleton className="h-6 w-1/2" />
+        <Separator />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
+          <div className="md:col-span-2 space-y-6">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-24 w-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (isError || !issue) {
     return <NotFoundPage />;
   }
   return (
@@ -31,11 +43,11 @@ export function IssueDetailPage() {
         </h1>
         <div className="flex items-center space-x-2 mt-2 text-sm">
           {issue.state === 'open' ? (
-            <Badge variant="secondary" className="bg-green-600 text-white"><AlertCircle className="h-4 w-4 mr-1" />Open</Badge>
+            <Badge variant="secondary" className="bg-green-600 text-white hover:bg-green-700"><AlertCircle className="h-4 w-4 mr-1" />Open</Badge>
           ) : (
-            <Badge variant="secondary" className="bg-purple-600 text-white"><CheckCircle2 className="h-4 w-4 mr-1" />Closed</Badge>
+            <Badge variant="secondary" className="bg-purple-600 text-white hover:bg-purple-700"><CheckCircle2 className="h-4 w-4 mr-1" />Closed</Badge>
           )}
-          <span className="font-semibold">{issue.user.username}</span>
+          <Link to={`/${issue.user.username}`} className="font-semibold hover:text-primary">{issue.user.username}</Link>
           <span className="text-muted-foreground">
             opened this issue {formatDistanceToNow(new Date(issue.createdAt), { addSuffix: true })}
           </span>
@@ -46,30 +58,30 @@ export function IssueDetailPage() {
       <Separator />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-6">
         <div className="md:col-span-2 space-y-6">
-          <Card className="border-2 border-blue-200 dark:border-blue-800">
-            <CardHeader className="bg-blue-50 dark:bg-blue-900/20 flex-row items-center space-x-2">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={issue.user.avatarUrl} />
-                <AvatarFallback>{issue.user.username.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <div>
-                <span className="font-semibold">{issue.user.username}</span>
-                <span className="text-sm text-muted-foreground ml-2">commented {formatDistanceToNow(new Date(issue.createdAt), { addSuffix: true })}</span>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <MarkdownPreview source={issue.body} />
-            </CardContent>
-          </Card>
+          <div className="flex space-x-4">
+            <Avatar className="h-10 w-10 hidden sm:block">
+              <AvatarImage src={issue.user.avatarUrl} />
+              <AvatarFallback>{issue.user.username.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <Card className="flex-1 border-2 border-primary/20">
+              <CardHeader className="bg-muted/30 flex-row items-center space-x-2 text-sm">
+                <Link to={`/${issue.user.username}`} className="font-semibold hover:text-primary">{issue.user.username}</Link>
+                <span className="text-muted-foreground">commented {formatDistanceToNow(new Date(issue.createdAt), { addSuffix: true })}</span>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <MarkdownPreview source={issue.body} />
+              </CardContent>
+            </Card>
+          </div>
           {issue.comments.map(comment => (
             <div key={comment.id} className="flex space-x-4">
-                <Avatar className="h-10 w-10">
+                <Avatar className="h-10 w-10 hidden sm:block">
                     <AvatarImage src={comment.user.avatarUrl} />
                     <AvatarFallback>{comment.user.username.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <Card className="flex-1">
                     <CardHeader className="bg-muted/50 flex-row items-center space-x-2 text-sm">
-                        <span className="font-semibold">{comment.user.username}</span>
+                        <Link to={`/${comment.user.username}`} className="font-semibold hover:text-primary">{comment.user.username}</Link>
                         <span className="text-muted-foreground">commented {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
                     </CardHeader>
                     <CardContent className="pt-4">
@@ -80,7 +92,7 @@ export function IssueDetailPage() {
           ))}
           <Separator />
           <div className="flex space-x-4">
-            <Avatar className="h-10 w-10">
+            <Avatar className="h-10 w-10 hidden sm:block">
                 <AvatarImage src={issue.user.avatarUrl} />
                 <AvatarFallback>{issue.user.username.charAt(0)}</AvatarFallback>
             </Avatar>
@@ -108,9 +120,9 @@ export function IssueDetailPage() {
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-muted-foreground">Labels</h3>
             <div className="flex flex-wrap gap-1">
-                {issue.labels.map(l => (
+                {issue.labels.length > 0 ? issue.labels.map(l => (
                     <Badge key={l.id} variant="outline" style={{borderColor: `#${l.color}`, color: `#${l.color}`}}>{l.name}</Badge>
-                ))}
+                )) : <p className="text-sm text-muted-foreground">None yet</p>}
             </div>
           </div>
         </aside>

@@ -1,8 +1,10 @@
-import { DurableObject, DurableObjectState } from "cloudflare:workers";
-import { CreateRepositoryPayload, DORepositoryState } from './types';
-import { Repository } from '../src/lib/types';
+import { DurableObject } from "cloudflare:workers";
+import { CreateRepositoryPayload, CreateIssuePayload } from './types';
+import { Repository, Issue } from '../src/lib/types';
 import { mockRepositories, mockUsers } from '../src/lib/mock-data';
 import { Env } from "./core-utils";
+
+type DORepositoryState = Record<string, Repository>;
 // **DO NOT MODIFY THE CLASS NAME**
 export class GlobalDurableObject extends DurableObject {
     constructor(state: DurableObjectState, env: Env) {
@@ -24,7 +26,7 @@ export class GlobalDurableObject extends DurableObject {
     // Repository management methods
     async createRepository(payload: CreateRepositoryPayload): Promise<Repository> {
         const repositories = await this.ctx.storage.get<DORepositoryState>("repositories") || {};
-        const owner = mockUsers.find(u => u.id === payload.ownerId); // Using mockUsers for owner for now
+        const owner = mockUsers.find(u => u.id === payload.ownerId);
         if (!owner) {
             throw new Error("Owner not found.");
         }
@@ -41,7 +43,7 @@ export class GlobalDurableObject extends DurableObject {
             pullRequests: [],
             files: [{ type: 'file', name: 'README.md', path: 'README.md', content: `# ${payload.name}\n${payload.description || ''}` }],
             updatedAt: new Date().toISOString(),
-            language: 'TypeScript', // Default language for new repos
+            language: 'TypeScript',
         };
         repositories[newRepo.id] = newRepo;
         await this.ctx.storage.put("repositories", repositories);
@@ -55,5 +57,42 @@ export class GlobalDurableObject extends DurableObject {
         const repositories = await this.ctx.storage.get<DORepositoryState>("repositories");
         if (!repositories) return undefined;
         return Object.values(repositories).find(repo => repo.owner.username === ownerUsername && repo.name === repoName);
+    }
+    // Issue management methods
+    async createIssue(ownerUsername: string, repoName: string, payload: CreateIssuePayload): Promise<Issue> {
+        const repositories = await this.ctx.storage.get<DORepositoryState>("repositories");
+        if (!repositories) throw new Error("No repositories found.");
+        const repoEntry = Object.entries(repositories).find(([, repo]) => repo.owner.username === ownerUsername && repo.name === repoName);
+        if (!repoEntry) throw new Error("Repository not found.");
+        const [repoId, repo] = repoEntry;
+        const author = mockUsers.find(u => u.id === payload.authorId);
+        if (!author) throw new Error("Author not found.");
+        const newIssue: Issue = {
+            id: `issue-${Date.now()}`,
+            number: (repo.issues.length || 0) + 1,
+            title: payload.title,
+            body: payload.body,
+            user: author,
+            state: 'open',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            comments: [],
+            labels: [],
+            assignees: [],
+        };
+        repo.issues.push(newIssue);
+        repo.updatedAt = new Date().toISOString();
+        repositories[repoId] = repo;
+        await this.ctx.storage.put("repositories", repositories);
+        return newIssue;
+    }
+    async getIssues(ownerUsername: string, repoName: string): Promise<Issue[]> {
+        const repo = await this.getRepository(ownerUsername, repoName);
+        if (!repo) throw new Error("Repository not found.");
+        return repo.issues.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+    async getIssue(ownerUsername: string, repoName: string, issueNumber: number): Promise<Issue | undefined> {
+        const repo = await this.getRepository(ownerUsername, repoName);
+        return repo?.issues.find(issue => issue.number === issueNumber);
     }
 }

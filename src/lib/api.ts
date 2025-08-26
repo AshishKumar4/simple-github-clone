@@ -1,5 +1,5 @@
-import { Repository } from './types';
-import { CreateRepositoryPayload } from '../../worker/types';
+import { Repository, Issue } from './types';
+import { CreateRepositoryPayload, CreateIssuePayload } from '../../worker/types';
 // A generic API response type
 export interface ApiResponse<T> {
   success: boolean;
@@ -29,9 +29,20 @@ export const apiClient = {
   createRepository: async (payload: CreateRepositoryPayload): Promise<ApiResponse<Repository>> => {
     return fetchApi<Repository>('/repos', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  },
+  getIssues: async (owner: string, repoName: string): Promise<ApiResponse<Issue[]>> => {
+    return fetchApi<Issue[]>(`/repos/${owner}/${repoName}/issues`);
+  },
+  getIssue: async (owner: string, repoName: string, issueNumber: number): Promise<ApiResponse<Issue>> => {
+    return fetchApi<Issue>(`/repos/${owner}/${repoName}/issues/${issueNumber}`);
+  },
+  createIssue: async (owner: string, repoName: string, payload: CreateIssuePayload): Promise<ApiResponse<Issue>> => {
+    return fetchApi<Issue>(`/repos/${owner}/${repoName}/issues`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
   },

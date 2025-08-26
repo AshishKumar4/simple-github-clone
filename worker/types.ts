@@ -1,4 +1,4 @@
-import { Repository, User } from '../src/lib/types';
+import { Repository, User, Issue } from '../src/lib/types';
 export interface CreateRepositoryPayload {
     name: string;
     description?: string;
@@ -13,6 +13,21 @@ export interface RepositoryResponse {
 export interface ListRepositoriesResponse {
     success: boolean;
     data?: Repository[];
+    error?: string;
+}
+export interface CreateIssuePayload {
+    title: string;
+    body: string;
+    authorId: string;
+}
+export interface IssueResponse {
+    success: boolean;
+    data?: Issue;
+    error?: string;
+}
+export interface ListIssuesResponse {
+    success: boolean;
+    data?: Issue[];
     error?: string;
 }
 // Durable Object state for repositories
