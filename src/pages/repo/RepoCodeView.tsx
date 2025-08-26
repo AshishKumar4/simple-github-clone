@@ -1,0 +1,140 @@
+import { useState } from 'react';
+import { useOutletContext, Link } from 'react-router-dom';
+import { Repository, FileNode } from '@/lib/types';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { File, Folder, GitCommit, History } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+// A simple syntax highlighter component (mock)
+const SyntaxHighlighter = ({ children }: { children: React.ReactNode }) => (
+  <pre className="bg-muted p-4 rounded-md overflow-x-auto text-sm">
+    <code>{children}</code>
+  </pre>
+);
+export function RepoCodeView() {
+  const { repo } = useOutletContext<{ repo: Repository }>();
+  const [currentPath, setCurrentPath] = useState('');
+  const [selectedFile, setSelectedFile] = useState<FileNode | null>(null);
+  const navigateTo = (path: string) => {
+    setCurrentPath(path);
+    setSelectedFile(null);
+  };
+  const viewFile = (file: FileNode) => {
+    setSelectedFile(file);
+    setCurrentPath(file.path);
+  };
+  const getContents = () => {
+    if (!currentPath) return repo.files;
+    const pathParts = currentPath.split('/');
+    let contents = repo.files;
+    for (const part of pathParts) {
+      const next = contents?.find(item => item.name === part);
+      if (next && next.type === 'dir') {
+        contents = next.children || [];
+      } else {
+        return [];
+      }
+    }
+    return contents;
+  };
+  const breadcrumbItems = [{ name: repo.name, path: '' }, ...currentPath.split('/').filter(Boolean).map((part, i, arr) => ({
+    name: part,
+    path: arr.slice(0, i + 1).join('/'),
+  }))];
+  const contents = getContents();
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={repo.owner.avatarUrl} />
+              <AvatarFallback>{repo.owner.username.charAt(0)}</AvatarFallback>
+            </Avatar>
+            <span className="font-semibold">{repo.owner.username}</span>
+            <span className="text-sm text-muted-foreground ml-4">Latest commit</span>
+          </div>
+          <div className="flex items-center space-x-4 text-sm">
+            <span className="flex items-center space-x-1 text-muted-foreground">
+              <GitCommit className="h-4 w-4" />
+              <span>abcdef1</span>
+            </span>
+            <span className="text-muted-foreground">{formatDistanceToNow(new Date(repo.updatedAt), { addSuffix: true })}</span>
+            <Button variant="outline" size="sm"><History className="h-4 w-4 mr-2" /> Commits</Button>
+          </div>
+        </CardHeader>
+      </Card>
+      <Card>
+        <CardHeader>
+          <Breadcrumb>
+            <BreadcrumbList>
+              {breadcrumbItems.map((item, index) => (
+                // Use a React Fragment with a key if multiple elements need to be returned for one item,
+                // but in this case, BreadcrumbItem can directly hold the key.
+                <div key={item.path} className="flex items-center"> {/* Wrapping div to hold key for the pair of elements */}
+                  <BreadcrumbItem>
+                    {index === breadcrumbItems.length - 1 ? (
+                      <BreadcrumbPage>{item.name}</BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink asChild>
+                        <a href="#" onClick={(e) => { e.preventDefault(); navigateTo(item.path); }}>{item.name}</a>
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
+                  {index < breadcrumbItems.length - 1 && <BreadcrumbSeparator />}
+                </div>
+              ))}
+            </BreadcrumbList>
+          </Breadcrumb>
+        </CardHeader>
+        <CardContent>
+          {selectedFile ? (
+            <div>
+              <h3 className="text-lg font-semibold mb-4">{selectedFile.name}</h3>
+              <SyntaxHighlighter>{selectedFile.content}</SyntaxHighlighter>
+            </div>
+          ) : (
+            <div className="border rounded-md">
+              {contents.map(item => (
+                <div key={item.path} className="flex items-center space-x-4 p-2 border-b last:border-b-0">
+                  {item.type === 'dir' ? <Folder className="h-5 w-5 text-blue-500" /> : <File className="h-5 w-5 text-muted-foreground" />}
+                  <button // Use a button instead of an anchor for click events when navigating internally
+                    onClick={() => {
+                      item.type === 'dir' ? navigateTo(item.path) : viewFile(item);
+                    }}
+                    className="text-sm hover:underline hover:text-blue-500 flex-1 text-left" // Added text-left for consistent alignment
+                  >
+                    {item.name}
+                  </button>
+                  <span className="text-sm text-muted-foreground">Latest commit message</span>
+                  <span className="text-sm text-muted-foreground text-right">
+                    {formatDistanceToNow(new Date(repo.updatedAt), { addSuffix: true })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      {repo.files.find(f => f.name === 'README.md') && !currentPath && !selectedFile && (
+        <Card>
+            <CardHeader>
+                <h3 className="font-semibold">README.md</h3>
+            </CardHeader>
+            <CardContent className="prose dark:prose-invert max-w-none">
+                <pre className="whitespace-pre-wrap font-sans">{repo.files.find(f => f.name === 'README.md')?.content}</pre>
+            </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
